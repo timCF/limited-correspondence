@@ -3,10 +3,10 @@ module Main where
 import System.IO (isEOF)
 
 main :: IO ()
-main = loop 1
+main = mainLoop 1
 
-loop :: Integer -> IO ()
-loop caseNumber = do
+mainLoop :: Integer -> IO ()
+mainLoop caseNumber = do
   eof <- isEOF
   if eof
     then return ()
@@ -14,7 +14,7 @@ loop caseNumber = do
       qty   <- getLine
       pairs <- getPairs (read qty) []
       putStrLn $ "Case " ++ show caseNumber ++ ": " ++ show pairs
-      loop $ caseNumber + 1
+      mainLoop $ caseNumber + 1
 
 getPairs :: Integer -> [(String, String)] -> IO [(String, String)]
 getPairs 0 acc          = return acc
