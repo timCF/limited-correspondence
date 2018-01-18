@@ -11,15 +11,16 @@ mainLoop caseNumber = do
   if eof
     then return ()
     else do
-      qty          <- getLine
-      (lst1, lst2) <- getLists (read qty) [] []
-      putStrLn $ "Case " ++ show caseNumber ++ ": " ++ show (lst1, lst2)
+      qty   <- getLine
+      pairs <- getPairs (read qty) []
+      putStrLn $ "Case " ++ show caseNumber ++ ": " ++ show pairs
       mainLoop $ caseNumber + 1
 
-getLists :: Integer -> [String] -> [String] -> IO ([String], [String])
-getLists 0         xs1 xs2 = return (xs1, xs2)
-getLists countdown xs1 xs2 = do
+getPairs :: Integer -> [(String, String)] -> IO [(String, String)]
+getPairs 0 acc          = return acc
+getPairs countdown acc  = do
   rawPair <- getLine
   let
-    [x1, x2] = words rawPair
-    in getLists (countdown - 1) (x1:xs1) (x2:xs2)
+    [first, second] = words rawPair
+    pair            = (first, second)
+    in getPairs (countdown - 1) $ pair:acc
