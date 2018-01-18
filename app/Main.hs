@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns #-}
+
 module Main where
 
 import System.IO (isEOF)
@@ -33,7 +35,17 @@ permutate pairs str1 str2 acc =
   if str1 == str2 && str1 /= ""
     then str1:acc
     else
-      foldl (generateFolder pairs str1 str2) acc pairs
+      let
+        str1len  = length str1
+        str2len  = length str2
+        continue =
+          if str1len < str2len
+            then str1 == take str1len str2
+            else str2 == take str2len str1
+      in
+        if continue
+          then foldl (generateFolder pairs str1 str2) acc pairs
+          else acc
 
 generateFolder :: [((String, String), Integer)] -> String -> String -> ([String] -> ((String, String), Integer) -> [String])
 generateFolder pairs str1 str2 = folder
