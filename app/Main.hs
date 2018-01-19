@@ -1,5 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
-
 module Main where
 
 import System.IO (isEOF)
@@ -15,7 +13,7 @@ mainLoop caseNumber = do
     else do
       qty   <- getLine
       pairs <- getPairs (read qty) []
-      putStrLn $ "Case " ++ show caseNumber ++ ": " ++ chooseSolution (permutate pairs "" "" [])
+      putStrLn $ "Case " ++ show caseNumber ++ ": " ++ permutate pairs "" "" "IMPOSSIBLE"
       mainLoop $ caseNumber + 1
 
 getPairs :: Integer -> [((String, String), Integer)] -> IO [((String, String), Integer)]
@@ -27,13 +25,13 @@ getPairs countdown acc  = do
     pair            = ((first, second), countdown)
     in getPairs (countdown - 1) $ pair:acc
 
-permutate :: [((String, String), Integer)] -> String -> String -> [String] -> [String]
+permutate :: [((String, String), Integer)] -> String -> String -> String -> String
 permutate []    str1 str2 acc
-  | str1 == str2  = str1:acc
+  | str1 == str2  = chooseSolution str1 acc
   | otherwise     = acc
 permutate pairs str1 str2 acc =
   if str1 == str2 && str1 /= ""
-    then str1:acc
+    then chooseSolution str1 acc
     else
       let
         str1len  = length str1
@@ -44,30 +42,18 @@ permutate pairs str1 str2 acc =
             else str2 == take str2len str1
       in
         if continue
-          then foldl (generateFolder pairs str1 str2) acc pairs
+          then foldl folder acc pairs
           else acc
-
-generateFolder :: [((String, String), Integer)] -> String -> String -> ([String] -> ((String, String), Integer) -> [String])
-generateFolder pairs str1 str2 = folder
   where
     folder acc ((sub1, sub2), index) =
       let
         newPairs = filter (\ ((_, _), xindex) -> xindex /= index) pairs
         in permutate newPairs (str1 ++ sub1) (str2 ++ sub2) acc
 
-chooseSolution :: [String] -> String
-chooseSolution []         = "IMPOSSIBLE"
-chooseSolution [solution] = solution
-chooseSolution (x:xs)     =
-  let
-    (newLst, _) = foldl minimumByStrLen ([x], length x) xs
-    in minimum newLst
-  where
-    minimumByStrLen (acc, len) newStr =
-      let
-        newLen = length newStr
-      in
-        case compare newLen len of
-          LT -> ([newStr], newLen)
-          GT -> (acc, len)
-          EQ -> (newStr:acc, len)
+chooseSolution :: String -> String -> String
+chooseSolution solution     "IMPOSSIBLE" = solution
+chooseSolution newSolution  oldSolution  =
+  case compare (length newSolution) (length oldSolution) of
+    LT -> newSolution
+    GT -> oldSolution
+    EQ -> min newSolution oldSolution
