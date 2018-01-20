@@ -2,10 +2,31 @@ module Main where
 
 import System.IO (isEOF)
 
+data Buffer = Buffer {
+  value   :: String,
+  size    :: Int
+}
+
+data BufferPair = BufferPair {
+  buffer1 :: Buffer,
+  buffer2 :: Buffer,
+  index   :: Int
+}
+
+defaultBuffer = Buffer {
+  value = "",
+  size  = 0
+}
+
+impossibleBuffer = Buffer {
+  value = "IMPOSSIBLE",
+  size  = 10
+}
+
 main :: IO ()
 main = mainLoop 1
 
-mainLoop :: Integer -> IO ()
+mainLoop :: Int -> IO ()
 mainLoop caseNumber = do
   eof <- isEOF
   if eof
@@ -13,47 +34,69 @@ mainLoop caseNumber = do
     else do
       qty   <- getLine
       pairs <- getPairs (read qty) []
-      putStrLn $ "Case " ++ show caseNumber ++ ": " ++ permutate pairs "" "" "IMPOSSIBLE"
+      putStrLn $ "Case " ++ show caseNumber ++ ": " ++ value (permutate pairs defaultBuffer defaultBuffer defaultBuffer impossibleBuffer)
       mainLoop $ caseNumber + 1
 
-getPairs :: Integer -> [((String, String), Integer)] -> IO [((String, String), Integer)]
-getPairs 0 acc          = return acc
-getPairs countdown acc  = do
+getPairs :: Int -> [BufferPair] -> IO [BufferPair]
+getPairs 0 accBuffer          = return accBuffer
+getPairs countdown accBuffer  = do
   rawPair <- getLine
   let
     [first, second] = words rawPair
-    pair            = ((first, second), countdown)
-    in getPairs (countdown - 1) $ pair:acc
+    pair = BufferPair {
+      buffer1 = Buffer {
+        value = first,
+        size  = length first
+      },
+      buffer2 = Buffer {
+        value = second,
+        size  = length second
+      },
+      index   = countdown
+    }
+    in getPairs (countdown - 1) $ pair:accBuffer
 
-permutate :: [((String, String), Integer)] -> String -> String -> String -> String
-permutate []    str1 str2 acc
-  | str1 == str2  = chooseSolution str1 acc
-  | otherwise     = acc
-permutate pairs str1 str2 acc =
-  if str1 == str2 && str1 /= ""
-    then chooseSolution str1 acc
-    else
-      let
-        str1len  = length str1
-        str2len  = length str2
-        continue =
-          if str1len < str2len
-            then str1 == take str1len str2
-            else str2 == take str2len str1
-      in
-        if continue
-          then foldl folder acc pairs
-          else acc
+permutate :: [BufferPair] -> Buffer -> Buffer -> Buffer -> Buffer -> Buffer
+permutate [] Buffer{size = 0} Buffer{size = 0} tmpBuffer accBuffer =
+  chooseSolution tmpBuffer accBuffer
+permutate [] Buffer{} Buffer{} Buffer{} accBuffer =
+  accBuffer
+permutate pairs buff1 buff2 tmpBuffer accBuffer =
+  if (size tmpBuffer /= 0) && (size buff1 == 0) && (size buff2 == 0)
+    then chooseSolution tmpBuffer accBuffer
+    else foldl folder accBuffer pairs
   where
-    folder acc ((sub1, sub2), index) =
+    folder accBuffer BufferPair{buffer1 = buffer1, buffer2 = buffer2, index = pairIndex} =
       let
-        newPairs = filter (\ ((_, _), xindex) -> xindex /= index) pairs
-        in permutate newPairs (str1 ++ sub1) (str2 ++ sub2) acc
+        tmpBuff1 = Buffer{value = value buff1 ++ value buffer1, size = size buff1 + size buffer1}
+        tmpBuff2 = Buffer{value = value buff2 ++ value buffer2, size = size buff2 + size buffer2}
+        size2get = min (size tmpBuff1) (size tmpBuff2)
+        (chunk1, newVal1) = smartSplit size2get tmpBuff1
+        (chunk2, newVal2) = smartSplit size2get tmpBuff2
+      in
+        if chunk1 /= chunk2
+          then accBuffer
+          else
+            let
+              newPairs      = filter (\ BufferPair{index = index} -> index /= pairIndex) pairs
+              newBuff1      = Buffer{value = newVal1, size = size tmpBuff1 - size2get}
+              newBuff2      = Buffer{value = newVal2, size = size tmpBuff2 - size2get}
+              newTmpBuffer  = Buffer{value = value tmpBuffer ++ chunk1, size = size tmpBuffer + size2get}
+              in permutate newPairs newBuff1 newBuff2 newTmpBuffer accBuffer
 
-chooseSolution :: String -> String -> String
-chooseSolution solution     "IMPOSSIBLE" = solution
-chooseSolution newSolution  oldSolution  =
-  case compare (length newSolution) (length oldSolution) of
-    LT -> newSolution
-    GT -> oldSolution
-    EQ -> min newSolution oldSolution
+smartSplit :: Int -> Buffer -> (String, String)
+smartSplit size2get Buffer{size = size, value = value} =
+  if size2get == size
+    then (value, "")
+    else splitAt size2get value
+
+chooseSolution :: Buffer -> Buffer -> Buffer
+chooseSolution newBuffer Buffer{value = "IMPOSSIBLE"} = newBuffer
+chooseSolution newBuffer oldBuffer    =
+  case compare (size newBuffer) (size oldBuffer) of
+    LT -> newBuffer
+    GT -> oldBuffer
+    EQ ->
+      case compare (value newBuffer) (value oldBuffer) of
+        LT -> newBuffer
+        _  -> oldBuffer
